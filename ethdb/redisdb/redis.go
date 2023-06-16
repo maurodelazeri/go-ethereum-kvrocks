@@ -96,7 +96,7 @@ func (db *Database) NewSnapshot() (ethdb.Snapshot, error) {
 	return newSnapshot(db)
 }
 
-func New(endpoint, password string) (*Database, error) {
+func NewRedisDB(endpoint, password string) (*Database, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     endpoint,
 		Password: password, // no password set

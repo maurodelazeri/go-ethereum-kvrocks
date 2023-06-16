@@ -361,6 +361,12 @@ type OpenOptions struct {
 //	db is non-existent |  pebble default  |  specified type
 //	db is existent     |  from db         |  specified type (if compatible)
 func openKeyValueDatabase(o OpenOptions) (ethdb.Database, error) {
+	// db, err := redisdb.NewRedisDB("localhost:6666", "")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// return NewDatabase(db), nil
+
 	// Reject any unsupported database type
 	if len(o.Type) != 0 && o.Type != dbLeveldb && o.Type != dbPebble {
 		return nil, fmt.Errorf("unknown db.engine %v", o.Type)

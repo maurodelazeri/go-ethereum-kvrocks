@@ -497,6 +497,7 @@ func (b *batch) ValueSize() int {
 
 // Write flushes any accumulated data to disk.
 func (b *batch) Write() error {
+	fmt.Println("batch size", b.size)
 	return b.db.Write(b.b, nil)
 }
 
