@@ -60,8 +60,9 @@ const (
 // functionality it also supports batch writes and iterating over the keyspace in
 // binary-alphabetical order.
 type Database struct {
-	fn string      // filename for reporting
-	db *leveldb.DB // LevelDB instance
+	RandonOps int
+	fn        string      // filename for reporting
+	db        *leveldb.DB // LevelDB instance
 
 	compTimeMeter       metrics.Meter // Meter for measuring the total time spent in database compaction
 	compReadMeter       metrics.Meter // Meter for measuring the data read during compaction
@@ -146,6 +147,8 @@ func NewCustom(file string, namespace string, customize func(options *opt.Option
 	ldb.seekCompGauge = metrics.NewRegisteredGauge(namespace+"compact/seek", nil)
 	ldb.manualMemAllocGauge = metrics.NewRegisteredGauge(namespace+"memory/manualalloc", nil)
 
+	ldb.RandonOps = 0
+
 	// Start up the metrics gathering and return
 	go ldb.meter(metricsGatheringInterval)
 	return ldb, nil
@@ -184,11 +187,15 @@ func (db *Database) Close() error {
 
 // Has retrieves if a key is present in the key-value store.
 func (db *Database) Has(key []byte) (bool, error) {
+	db.RandonOps++
+
 	return db.db.Has(key, nil)
 }
 
 // Get retrieves the given key if it's present in the key-value store.
 func (db *Database) Get(key []byte) ([]byte, error) {
+	db.RandonOps++
+
 	dat, err := db.db.Get(key, nil)
 	if err != nil {
 		return nil, err
@@ -198,11 +205,15 @@ func (db *Database) Get(key []byte) ([]byte, error) {
 
 // Put inserts the given value into the key-value store.
 func (db *Database) Put(key []byte, value []byte) error {
+	db.RandonOps++
+
 	return db.db.Put(key, value, nil)
 }
 
 // Delete removes the key from the key-value store.
 func (db *Database) Delete(key []byte) error {
+	db.RandonOps++
+
 	return db.db.Delete(key, nil)
 }
 
@@ -210,6 +221,7 @@ func (db *Database) Delete(key []byte) error {
 // database until a final write is called.
 func (db *Database) NewBatch() ethdb.Batch {
 	return &batch{
+		xx: db,
 		db: db.db,
 		b:  new(leveldb.Batch),
 	}
@@ -218,6 +230,7 @@ func (db *Database) NewBatch() ethdb.Batch {
 // NewBatchWithSize creates a write-only database batch with pre-allocated buffer.
 func (db *Database) NewBatchWithSize(size int) ethdb.Batch {
 	return &batch{
+		xx: db,
 		db: db.db,
 		b:  leveldb.MakeBatch(size),
 	}
@@ -471,6 +484,7 @@ func (db *Database) meter(refresh time.Duration) {
 // batch is a write-only leveldb batch that commits changes to its host database
 // when Write is called. A batch cannot be used concurrently.
 type batch struct {
+	xx   *Database
 	db   *leveldb.DB
 	b    *leveldb.Batch
 	size int
@@ -497,7 +511,9 @@ func (b *batch) ValueSize() int {
 
 // Write flushes any accumulated data to disk.
 func (b *batch) Write() error {
-	fmt.Println("batch size", b.size)
+	fmt.Println("batch size", b.size, "other", b.xx.RandonOps)
+	b.xx.RandonOps = 0
+
 	return b.db.Write(b.b, nil)
 }
 
